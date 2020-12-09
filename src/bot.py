@@ -76,9 +76,9 @@ class Bot(object):
                 cur_reward = self.r[0]
 
             # Update
-            self.qvalues[state][act] = (1-self.lr) * (self.qvalues[state][act]) + \
-                                       self.lr * ( cur_reward + self.discount*max(self.qvalues[res_state]) )
-
+            # self.qvalues[state][act] = (1-self.lr) * (self.qvalues[state][act]) + \
+            #                           self.lr * ( cur_reward + self.discount*max(self.qvalues[res_state]) )
+            self.qvalues[state][act] = self.qvalues[state][act] + self.lr * ( cur_reward  + 1 * max(self.qvalues[res_state])  -  self.qvalues[state][act] )
             t += 1
 
         self.gameCNT += 1  # increase game count
