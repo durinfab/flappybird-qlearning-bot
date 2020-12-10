@@ -10,16 +10,18 @@ from pygame.locals import *
 
 sys.path.append(os.getcwd())
 
+from config import BongoBirdConfig
 from bot import Bot
 
 # Initialize the bot
 bot = Bot()
+config = BongoBirdConfig()
 
-SCREENWIDTH = 288
-SCREENHEIGHT = 512
+SCREENWIDTH = config.SCREENWIDTH
+SCREENHEIGHT = config.SCREENHEIGHT
 # amount by which base can maximum shift to left
-PIPEGAPSIZE = 100  # gap between upper and lower part of pipe
-BASEY = SCREENHEIGHT * 0.79
+PIPEGAPSIZE = config.PIPEGAPSIZE  # gap between upper and lower part of pipe
+BASEY = config.BASEY
 # image, sound and hitmask  dicts
 IMAGES, SOUNDS, HITMASKS = {}, {}, {}
 
@@ -236,12 +238,12 @@ def mainGame(movementInfo):
     pipeVelX = -4
 
     # player velocity, max velocity, downward accleration, accleration on flap
-    playerVelY = -9  # player's velocity along Y, default same as playerFlapped
-    playerMaxVelY = 10  # max vel along Y, max descend speed
-    playerMinVelY = -8  # min vel along Y, max ascend speed
-    playerAccY = 1  # players downward accleration
-    playerFlapAcc = -9  # players speed on flapping
-    playerFlapped = False  # True when player flaps
+    playerVelY      = config.playerVelY  # player's velocity along Y, default same as playerFlapped
+    playerMaxVelY   = config.playerMaxVelY  # max vel along Y, max descend speed
+    playerMinVelY   = config.playerMinVelY  # min vel along Y, max ascend speed
+    playerAccY      = config.playerAccY  # players downward accleration
+    playerFlapAcc   = config.playerFlapAcc  # players speed on flapping
+    playerFlapped   = config.playerFlapped  # True when player flaps
 
     while True:
         if -playerx + lowerPipes[0]["x"] > -30:

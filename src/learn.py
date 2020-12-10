@@ -4,45 +4,67 @@ import sys
 import os
 import argparse
 import pickle
+import json
+from itertools import chain
 
 import pygame
 from pygame.locals import *
 
 sys.path.append(os.getcwd())
 
+from config import BongoBirdConfig
 from bot import Bot
 
+config = BongoBirdConfig()
 
-# Initialize the bot
-bot = Bot()
-
-SCREENWIDTH = 288
-SCREENHEIGHT = 512
+SCREENWIDTH = config.SCREENWIDTH
+SCREENHEIGHT = config.SCREENHEIGHT
 # amount by which base can maximum shift to left
-PIPEGAPSIZE = 100  # gap between upper and lower part of pipe
-BASEY = SCREENHEIGHT * 0.79
+PIPEGAPSIZE = config.PIPEGAPSIZE  # gap between upper and lower part of pipe
+BASEY = config.BASEY
 
 # image width height indices for ease of use
-IM_WIDTH = 0
-IM_HEIGTH = 1
+IM_WIDTH = config.IM_WIDTH
+IM_HEIGHT = config.IM_HEIGHT
 # image, Width, Height
-PIPE = [52, 320]
-PLAYER = [34, 24]
-BASE = [336, 112]
-BACKGROUND = [288, 512]
-
+PIPE = config.PIPE
+PLAYER = config.PLAYER
+BASE = config.BASE
+BACKGROUND = config.BACKGROUND
 
 def main():
     global HITMASKS, ITERATIONS, VERBOSE, bot
 
+    # argumente
     parser = argparse.ArgumentParser("learn.py")
     parser.add_argument("--iter", type=int, default=1000, help="number of iterations to run")
+    parser.add_argument("--reset", action="store_true", help="reset qvales on startup")
     parser.add_argument(
         "--verbose", action="store_true", help="output [iteration | score] to stdout"
     )
     args = parser.parse_args()
     ITERATIONS = args.iter
     VERBOSE = args.verbose
+
+    #reset collected qvalues 
+    if args.reset:
+        print("Resetting values...")
+        qval = {}
+        # X -> [-40,-30...120] U [140, 210 ... 490]
+        # Y -> [-300, -290 ... 160] U [180, 240 ... 420]
+        for x in chain(list(range(-40, 140, 10)), list(range(140, 421, 70))):
+            for y in chain(list(range(-300, 180, 10)), list(range(180, 421, 60))):
+                for v in range(-25, 11):
+                    qval[str(x) + "_" + str(y) + "_" + str(v)] = [0, 0]
+
+
+        fd = open("data/qvalues.json", "w")
+        json.dump(qval, fd)
+        fd.close()
+        print("Reset complete!")
+
+    # init bot
+    bot = Bot()
 
     # load dumped HITMASKS
     with open("data/hitmasks_data.pkl", "rb") as input:
@@ -59,7 +81,7 @@ def showWelcomeAnimation():
     # index of player to blit on screen
     playerIndexGen = cycle([0, 1, 2, 1])
 
-    playery = int((SCREENHEIGHT - PLAYER[IM_HEIGTH]) / 2)
+    playery = int((SCREENHEIGHT - PLAYER[IM_HEIGHT]) / 2)
 
     basex = 0
 
@@ -87,13 +109,13 @@ def mainGame(movementInfo):
     newPipe1 = getRandomPipe()
     newPipe2 = getRandomPipe()
 
-    # list of upper pipes
+    # list of initial upper pipes
     upperPipes = [
         {"x": SCREENWIDTH + 200, "y": newPipe1[0]["y"]},
         {"x": SCREENWIDTH + 200 + (SCREENWIDTH / 2), "y": newPipe2[0]["y"]},
     ]
 
-    # list of lowerpipe
+    # list of initial lowerpipe
     lowerPipes = [
         {"x": SCREENWIDTH + 200, "y": newPipe1[1]["y"]},
         {"x": SCREENWIDTH + 200 + (SCREENWIDTH / 2), "y": newPipe2[1]["y"]},
@@ -102,23 +124,29 @@ def mainGame(movementInfo):
     pipeVelX = -4
 
     # player velocity, max velocity, downward accleration, accleration on flap
-    playerVelY = -9  # player's velocity along Y, default same as playerFlapped
-    playerMaxVelY = 10  # max vel along Y, max descend speed
-    playerMinVelY = -8  # min vel along Y, max ascend speed
-    playerAccY = 1  # players downward accleration
-    playerFlapAcc = -9  # players speed on flapping
-    playerFlapped = False  # True when player flaps
+    playerVelY      = config.playerVelY  # player's velocity along Y, default same as playerFlapped
+    playerMaxVelY   = config.playerMaxVelY  # max vel along Y, max descend speed
+    playerMinVelY   = config.playerMinVelY  # min vel along Y, max ascend speed
+    playerAccY      = config.playerAccY  # players downward accleration
+    playerFlapAcc   = config.playerFlapAcc  # players speed on flapping
+    playerFlapped   = config.playerFlapped  # True when player flaps
 
+    # play until we die
     while True:
+        # is lowerpipe[0] still in front of us?
         if -playerx + lowerPipes[0]["x"] > -30:
             myPipe = lowerPipes[0]
         else:
             myPipe = lowerPipes[1]
 
+        # state: 
+        # value to determine the x relation between play and pipe 
+        # ,value to determine the y relation between play and pipe
+        # ,player velocity along y
         if bot.act(-playerx + myPipe["x"], -playery + myPipe["y"], playerVelY):
-            if playery > -2 * PLAYER[IM_HEIGTH]:
-                playerVelY = playerFlapAcc
-                playerFlapped = True
+
+            playerVelY = playerFlapAcc
+            playerFlapped = True
 
         # check for crash here
         crashTest = checkCrash(
@@ -156,7 +184,7 @@ def mainGame(movementInfo):
             playerVelY += playerAccY
         if playerFlapped:
             playerFlapped = False
-        playerHeight = PLAYER[IM_HEIGTH]
+        playerHeight = PLAYER[IM_HEIGHT]
         playery += min(playerVelY, BASEY - playery - playerHeight)
 
         # move pipes to left
@@ -202,7 +230,7 @@ def getRandomPipe():
     # y of gap between upper and lower pipe
     gapY = random.randrange(0, int(BASEY * 0.6 - PIPEGAPSIZE))
     gapY += int(BASEY * 0.2)
-    pipeHeight = PIPE[IM_HEIGTH]
+    pipeHeight = PIPE[IM_HEIGHT]
     pipeX = SCREENWIDTH + 10
 
     return [
@@ -215,7 +243,7 @@ def checkCrash(player, upperPipes, lowerPipes):
     """returns True if player collders with base or pipes."""
     pi = player["index"]
     player["w"] = PLAYER[IM_WIDTH]
-    player["h"] = PLAYER[IM_HEIGTH]
+    player["h"] = PLAYER[IM_HEIGHT]
 
     # if player crashes into ground
     if (player["y"] + player["h"] >= BASEY - 1) or (player["y"] + player["h"] <= 0):
@@ -224,7 +252,7 @@ def checkCrash(player, upperPipes, lowerPipes):
 
         playerRect = pygame.Rect(player["x"], player["y"], player["w"], player["h"])
         pipeW = PIPE[IM_WIDTH]
-        pipeH = PIPE[IM_HEIGTH]
+        pipeH = PIPE[IM_HEIGHT]
 
         for uPipe, lPipe in zip(upperPipes, lowerPipes):
             # upper and lower pipe rects

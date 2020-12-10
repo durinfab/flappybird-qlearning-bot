@@ -1,4 +1,5 @@
 import json
+from config import QLearningConfig
 
 
 class Bot(object):
@@ -7,17 +8,20 @@ class Bot(object):
     After every iteration (iteration = 1 game that ends with the bird dying) updates Q values
     After every DUMPING_N iterations, dumps the Q values to the local JSON file
     """
+    config = QLearningConfig()
+
+    gameCNT     = config.gameCNT  # Game count of current run, incremented after every death
+    DUMPING_N   = config.DUMPING_N  # Number of iterations to dump Q values to JSON after
+    discount    = config.discount
+    r           = config.r  # Reward function
+    lr          = config.lr
+        
+    last_state = "420_240_0"
+    last_action = 0
+    moves = []
 
     def __init__(self):
-        self.gameCNT = 0  # Game count of current run, incremented after every death
-        self.DUMPING_N = 25  # Number of iterations to dump Q values to JSON after
-        self.discount = 1.0
-        self.r = {0: 1, 1: -1000}  # Reward function
-        self.lr = 0.7
         self.load_qvalues()
-        self.last_state = "420_240_0"
-        self.last_action = 0
-        self.moves = []
 
     def load_qvalues(self):
         """
