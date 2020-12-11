@@ -46,21 +46,28 @@ def main():
     ITERATIONS = args.iter
     VERBOSE = args.verbose
 
-    #reset collected qvalues 
+    #reset collected qvalues
     if args.reset:
         print("Resetting values...")
         qval = {}
+        frequency = {}
         # X -> [-40,-30...120] U [140, 210 ... 490]
         # Y -> [-300, -290 ... 160] U [180, 240 ... 420]
         for x in chain(list(range(-40, 140, 10)), list(range(140, 421, 70))):
             for y in chain(list(range(-300, 180, 10)), list(range(180, 421, 60))):
-                for v in range(-25, 11):
+                for v in range(-10, 11):
                     qval[str(x) + "_" + str(y) + "_" + str(v)] = [0, 0]
+                    frequency[str(x) + "_" + str(y) + "_" + str(v)] = [0, 0]
 
 
         fd = open("data/qvalues.json", "w")
+        fd2 = open("data/frequency.json", "w")
+
         json.dump(qval, fd)
+        json.dump(frequency, fd2)
+
         fd.close()
+        fd2.close()
         print("Reset complete!")
 
     # init bot
@@ -139,8 +146,8 @@ def mainGame(movementInfo):
         else:
             myPipe = lowerPipes[1]
 
-        # state: 
-        # value to determine the x relation between play and pipe 
+        # state:
+        # value to determine the x relation between play and pipe
         # ,value to determine the y relation between play and pipe
         # ,player velocity along y
         if bot.act(-playerx + myPipe["x"], -playery + myPipe["y"], playerVelY):
